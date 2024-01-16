@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "sample-project"
+version = "0.1.0"
+description = "Test project for Enterprise Web Lib"
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = "^0.25.0"
+enterprise-web = {path = "../dist/enterprise_web-0.0.0-py3-none-any.whl"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+start = "sample_project.main:start"
+

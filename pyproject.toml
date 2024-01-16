@@ -6,13 +6,11 @@ version = "0.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-packages = [{include = "sample_project"}, {include = "enterprise_web"}]
+# packages = [{include = "sample_project"}, {include = "enterprise_web"}]
 
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.108.0"
-uvicorn = "^0.25.0"
 pydantic = "^2.5.3"
 
 
@@ -21,5 +19,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-start = "sample_project.main:start" # Move to sample project 
 ewcli = "enterprise_web.cli:main"
