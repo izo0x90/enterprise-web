@@ -6,21 +6,40 @@ import uvicorn
 app = FastAPI()
 
 from . import api
-from enterprise_web.repo import EntityRepo
+from enterprise_web.repo import EntityRepoManager
 from enterprise_web.infra import register_routes
 from enterprise_web.integrations.web.fastapi import build_fastapi_register_route
 
 from functools import partial
 
-repo = EntityRepo(entity_classes=api.project.domain.entities)
+from .api.common.data_stores.sqlmodel import create_db_and_tables, get_db_session
+from .api.common.data_stores.types import DataStoreTypes
+
+repo = EntityRepoManager()
+
+repo.session_getters_by_data_source_type[DataStoreTypes.MYSQL] = get_db_session
 
 fastapi_register_route = build_fastapi_register_route(app)
 
-register_routes(api, repo, fastapi_register_route)
+register_routes(api, repo, fastapi_register_route, get_db_session)
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+@app.get("/init_test_db")
+async def root():
+    from .api.project.data import models
+    from sqlmodel import select
+    create_db_and_tables()
+    project = models.Project(project_name="Test project 0")
+    with get_db_session() as session:
+        session.add(project)
+        session.commit()
+        res = session.exec(select(models.Project)).all()
+        print("DATA: ", res)
+
+    return {"status": "Success"}
 
 def start():
     uvicorn.run(

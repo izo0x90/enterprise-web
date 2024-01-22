@@ -1,45 +1,76 @@
+from abc import abstractmethod, ABC, ABCMeta
+from contextlib import contextmanager
 from typing import Protocol
 
-class EntityRepoType(Protocol):
-    pass
+entity_repo_classes = {}
 
-# class EntityFactory(Protocol):
-#     def by_id(self, id: list[int]) -> 'Entity':
-#         ...
+class EntityRepoMeta(ABCMeta):
+    def __init__(cls, name, bases, dict):
+        if ABC not in bases:
+            print("Registering Repo Class: ", cls, name, bases)
+            # TODO: How do we want to handle namespacing repos for entities with same name, across Feature collections
+            entity_repo_classes[cls.ENTITY_CLS.__name__] = cls
 
-def pretend_get_db_data(models):
-    data = []
-    for model in models:
-        data.append(model(name='Some test project name', id='123'))
 
-    return data
+class EntityRepo(ABC, metaclass=EntityRepoMeta):
+    def __init__(self, db_session):
+        self.db_session = db_session
 
-class EntityFactory:
-    def __init__(self, entity_cls):
-        self.entity_cls = entity_cls
+    @classmethod
+    @property
+    @abstractmethod
+    def ENTITY_CLS(cls):
+        raise NotImplementedError
 
-    def by_id(self, ids: list[int]) -> list['Entity']:
-        entities = []
-        for id in ids:
-            entity = self.entity_cls()
-            # TODO: How do we get model instances from DB
-            # TODO: First integration pydantic sql lib. for data retrieval
-            populated_models = pretend_get_db_data(self.entity_cls.models)
+    @classmethod
+    @property
+    @abstractmethod
+    def DATA_STORE_TYPE(cls):
+        raise NotImplementedError
 
-            entity.data = {}
-            for model in populated_models:
-                # TODO: What does the naming convention for the populated model key look like?
-                entity.data['project'] = model
+    def init_db_session(db_session):
+        self.db_session = db_session
 
-            entities.append(entity)
+    def clear_db_session(db_session):
+        self.db_session = None
 
-        return entities
 
-class EntityRepo:
-    # TODO: How do we handle ids, How do we handle commiting and updates, How do we handle caching 
+class EntityRepoManager:
+    repo_types = entity_repo_classes
+    # TODO:  How do we handle caching 
     # TODO: How do we handle optimistic concurrency
-    def __init__(self, entity_classes):
-        self.repos = {} 
-        for entity_class in entity_classes:
-            self.repos[entity_class.__name__] = EntityFactory(entity_class)
+    def __init__(self):
+        self.repo_instances = {}
+        self.session_getters_by_data_source_type = {}
 
+    def __getitem__(self, entity_name):
+        # TODO:(Hristo) Add exception for missing/ unregistered repo
+        repo_type = self.repo_types[entity_name]
+        if repo_type in self.repo_instances:
+            repo_instance = self.repo_instances[repo_type]
+            print("DB using existing session")
+        else:
+            session = self.session_getters_by_data_source_type[repo_type.DATA_STORE_TYPE]()
+            session.begin()
+            repo_instance = repo_type(session)
+            print("DB Session start", session)
+            self.repo_instances[repo_type] = repo_instance
+
+        return repo_instance
+    
+    @contextmanager
+    def init_session(self, with_commit=True):
+        try:
+            yield self
+        finally:
+            for repo in self.repo_instances.values():
+                repo.db_session.commit()
+                if with_commit:
+                    repo.db_session.close()
+                print("DB Session end", repo.db_session)
+
+            repo_instances = {}
+
+    def update_mutated(self):
+        # TODO: How do we handle tracking "dirtied/ mutated" entities
+        pass

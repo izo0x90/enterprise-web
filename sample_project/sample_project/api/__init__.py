@@ -1,3 +1,5 @@
-from . import project
+from . import (
+    project
+)
 
-__all__ = ['project']
+__all__ = ["project"]

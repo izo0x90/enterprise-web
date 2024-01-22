@@ -11,14 +11,20 @@ class ProjectDataModel:
     id: int
 
 class ProjectEntity:
-    models: list[type(pydantic.BaseModel)] = [ProjectDataModel]
-    data: dict[str, pydantic.BaseModel]
+    # models: list[type(pydantic.BaseModel)] = [ProjectDataModel]
+    # data: dict[str, pydantic.BaseModel]
+    data: ProjectDataModel
+
+    def __init__(self):
+        self.data = ProjectDataModel(name="", id=0)
 
     @property
     def name(self):
+        return self.data.project_name
         return self.data['project'].name
 
     @property
     def id(self):
+        return self.data.id
         return self.data['project'].id
 

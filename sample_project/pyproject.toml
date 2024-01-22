@@ -10,7 +10,9 @@ readme = "README.md"
 python = "^3.11"
 fastapi = "^0.109.0"
 uvicorn = "^0.25.0"
-enterprise-web = {path = "../dist/enterprise_web-0.0.0-py3-none-any.whl"}
+pyright = "^1.1.347"
+sqlmodel = "^0.0.14"
+enterprise-web = {path = "../dist/enterprise_web-0.0.0.tar.gz"}
 
 
 [build-system]
