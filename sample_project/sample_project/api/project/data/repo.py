@@ -1,3 +1,5 @@
+from typing import Self
+
 from enterprise_web.repo import (
     EntityRepo
 )
@@ -11,7 +13,8 @@ class ProjectEntityRepo(EntityRepo):
     ENTITY_CLS = ProjectEntity
     DATA_STORE_TYPE = DataStoreTypes.MYSQL
 
-    def by_ids(self,  ids: list[int]) -> list['Entity']: 
+    @EntityRepo.entity_retriver
+    def by_ids(self,  ids: list[int]) -> list[ProjectEntity]: 
         entities = []
         print(f"Current DB session is {self.db_session}")
         statement = select(Project).where(col(Project.id).in_(ids))
@@ -20,7 +23,7 @@ class ProjectEntityRepo(EntityRepo):
         for model in populated_models:
             entity = self.ENTITY_CLS()
             entity.data.id = model.id
-            entity.data.project_name = model.project_name
+            entity.data.name = model.project_name
             entities.append(entity)
 
         return entities

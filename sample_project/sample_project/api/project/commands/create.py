@@ -1,9 +1,9 @@
 from abc import abstractmethod
 import pydantic
 
-from enterprise_web.repo import EntityRepo
+from enterprise_web.repo import EntityRepoManager
 
-# TODO: How do we handle identity, permissions etc.
+# TODO: (Hristo) How do we handle identity, permissions etc.
 
 # Framework
 from typing import Any, NamedTuple 
@@ -15,21 +15,23 @@ class InsufficientPermissions(Exception):
     pass
 
 class Command:
+    """ If we go with class based"""
     @abstractmethod
-    def _check_permissions(self, identity: Identity, repo: EntityRepo, args: Any) -> bool:
+    def _check_permissions(self, identity: Identity, repo: EntityRepoManager, args: Any) -> bool:
         raise NotImplemented
 
     @abstractmethod
-    def _handler(self, identity: Identity, repo: EntityRepo, args: Any) -> CommandOutput:
+    def _handler(self, identity: Identity, repo: EntityRepoManager, args: Any) -> CommandOutput:
         raise NotImplemented
 
-    def exec(self, identity: Identity, repo: EntityRepo, args: CommandInput) -> Any:
+    def exec(self, identity: Identity, repo: EntityRepoManager, args: CommandInput) -> Any:
         if not self._check_permissions(identity, repo, args):
             raise InsufficientPermissions
 
         return self._handler(identity, repo, args)
 
 def command(check_permissions):
+    """ Decorator approach """
     def decorator_builder(f):
         def wrapper(*args, **kwargs):
             if not check_permissions(*args, **kwargs):
@@ -54,31 +56,32 @@ class RequestData(pydantic.BaseModel):
 class ResponseData(pydantic.BaseModel):
     project_name: str
 
-
+# Class based approach
 class CreateCommand(Command):
-    def _check_permissions(self, identity: Identity, repo: EntityRepo, args: Input) -> bool:
+    def _check_permissions(self, identity: Identity, repo: EntityRepoManager, args: Input) -> bool:
         return True
 
-    def _handler(self, identity: Identity, repo: EntityRepo, args: Input) -> Output:
-        print(repo)
-
+    def _handler(self, identity: Identity, repo: EntityRepoManager, args: Input) -> Output:
         project_entity = repo['ProjectEntity'].by_ids([args.id])[0]
-        print(project_entity.name)
         return Output(project_name=project_entity.name)
 
 exec = CreateCommand().exec
+# Class based approach END
 
-def _check_permissions(identity: Identity, repo: EntityRepo, args: Input) -> bool:
+
+# Decorator based approach
+def _check_permissions(identity: Identity, repo: EntityRepoManager, args: Input) -> bool:
     return True
 
 @command(_check_permissions)
-def handler(identity: Identity, repo: EntityRepo, args: Input) -> Output:
+def handler(identity: Identity, repo: EntityRepoManager, args: Input) -> Output:
     project_entity = repo['ProjectEntity'].by_ids([args.id])[0]
     return Output(project_name=project_entity.name)
+# Decorator based approach END
 
-print('Loading endpoint code')
-def endpoint(identity: Identity, repo: EntityRepo, request_data: RequestData) -> ResponseData:
-
+# TODO: (Hristo) How do we handle HTTP response codes
+# TODO: (Hristo) How do we handle endpoint registration, can this magic naming approach be acceptable
+def endpoint(identity: Identity, repo: EntityRepoManager, request_data: RequestData) -> ResponseData:
     print('Project create end point START')
     inputs = Input(**request_data.model_dump())
     result = exec(identity, repo, inputs)

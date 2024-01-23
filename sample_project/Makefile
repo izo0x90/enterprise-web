@@ -1,4 +1,4 @@
-# TODO: Clean up setup commands
+# TODO: (Hristo) Clean up setup commands
 # API=$(shell docker ps -qf "name=exampleproj-api")
 #
 # setup-dev-env:
@@ -46,7 +46,7 @@ format:
 start:
 	poetry run start
 
-# TODO: Update to use correct build version
+# TODO: (Hristo) Update to use correct build version
 rebuild:
 	cd .. && poetry build
 	poetry remove enterprise-web

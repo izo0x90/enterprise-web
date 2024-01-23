@@ -1,3 +1,6 @@
+TODO:
+- Add linter, typechekcer, formatter
+
 Potential features:
 - Structured approach for batched data handling and retrieval
 - Eventing on commands - customizable supporting queues

@@ -1,5 +1,3 @@
-# TODO: Best way to structure a sample project in this repo, use the lib as proper dep.
-
 from fastapi import FastAPI
 import uvicorn
 
