@@ -1,5 +1,3 @@
-from typing import Self
-
 from enterprise_web.repo import (
     EntityRepo
 )
@@ -13,8 +11,7 @@ class ProjectEntityRepo(EntityRepo):
     ENTITY_CLS = ProjectEntity
     DATA_STORE_TYPE = DataStoreTypes.MYSQL
 
-    @EntityRepo.entity_retriver
-    def by_ids(self,  ids: list[int]) -> list[ProjectEntity]: 
+    def _by_ids(self,  ids: list[int], filters: list) -> list[ProjectEntity]: 
         entities = []
         print(f"Current DB session is {self.db_session}")
         statement = select(Project).where(col(Project.id).in_(ids))

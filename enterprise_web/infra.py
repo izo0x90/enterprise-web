@@ -1,20 +1,24 @@
 from functools import partial
 import inspect
 
+from .log import get_logger
+
+logger = get_logger()
+
 async def get_repo(repo):
 
-    print("Repo session start")
+    logger.debug("Repo session start")
     with repo.init_session():
         yield repo
         repo.update_mutated()
 
 
-    print("Repo session end")
+    logger.debug("Repo session end")
 
 async def get_ident():
     return None
 
-def register_routes(package, repo, route_register_func, get_db_session):
+def register_routes(package, repo, route_register_func):
     getmodule = partial(getattr, package)
     features = map(getmodule, package.__all__)
 
@@ -23,7 +27,11 @@ def register_routes(package, repo, route_register_func, get_db_session):
         for command_name in feature.commands.__all__:
             command = getattr(feature.commands, command_name)
             handler = command.endpoint
-            print("Annotations ", inspect.get_annotations(handler))
-            print("In reg. routes", handler)
-            route_register_func('post', "/test", handler, partial(get_repo, repo), get_ident)
+            route_register_func(handler._method, handler._path, handler, partial(get_repo, repo), get_ident)
 
+def register_endpoint(path, method='get'):
+    def decorator_builder(f):
+        f._path = path
+        f._method = method
+        return f
+    return decorator_builder

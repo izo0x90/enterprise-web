@@ -1,13 +1,34 @@
-from abc import abstractmethod, ABC, ABCMeta
+from abc import (
+    abstractmethod,
+    ABC,
+    ABCMeta
+)
 from contextlib import contextmanager
 from enum import Enum
-from typing import Any, Callable, Generic, Protocol, TypeVar
+from typing import (
+    Any,
+    Callable,
+    MutableMapping,
+    Generic,
+    Mapping,
+    Protocol,
+    Sequence,
+    TypeVar
+)
+
+from .dev import NEEDSTYPEHINT
+from .log import get_logger
+
+logger = get_logger()
+
 
 _entity_repo_classes = {}
 _data_store_session_getters = {}
 
-class Entity(ABC):
-    pass
+GenericEntityId = TypeVar('GenericEntityId', int, str)
+
+class Entity(ABC, Generic[GenericEntityId]):
+    id: GenericEntityId
 
 GenericEntity = TypeVar('GenericEntity', bound=Entity)
 
@@ -49,7 +70,7 @@ class EntityRepoType(Protocol, Generic[GenericEntity]):
 class EntityRepoMeta(ABCMeta):
     def __init__(cls: EntityRepoType, name, bases, attr_dict):
         if ABC not in bases:
-            print("Registering Repo Class: ", cls, name, bases)
+            logger.debug("Registering Repo Class: ", cls, name, bases)
             # TODO: (Hristo) How do we want to handle namespacing repos for entities with same name,
             # TODO: (Hristo) across Feature collections
 
@@ -67,44 +88,51 @@ class EntityRepoMeta(ABCMeta):
 class MissingRetriverIdsParam(Exception):
     pass
 
-class EntityRepo(ABC, Generic[GenericEntity], metaclass=EntityRepoMeta):
+class EntityRepo(ABC, Generic[GenericEntity, GenericEntityId], metaclass=EntityRepoMeta):
     ENTITY_CLS: type[GenericEntity]
     DATA_STORE_TYPE: Enum
 
     def __init__(self, db_session):
         self.db_session = db_session
-        self._tracked_entities: dict[Any, GenericEntity] = {}
+        self._tracked_entities: MutableMapping[GenericEntityId, GenericEntity] = {}
 
-    @staticmethod
-    def entity_retriver(f):
-        import inspect
-        print(inspect.get_annotations(f))
-        method_annotations = inspect.get_annotations(f)
+    def shutdown(self):
+        self.db_session = None
+        self._tracked_entities = {}
 
-        ids_param_name = None
-        for name, type_ in method_annotations.items():
-            if type_ in [list[EntityIDStr], list[EntityIDInt]]:
-                ids_param_name = name
-                break
+    @abstractmethod
+    def _by_ids(self, ids: Sequence[GenericEntityId], filters: Sequence[NEEDSTYPEHINT]) -> Sequence[GenericEntity]:
+            raise NotImplemented
 
-        if not ids_param_name:
-            raise MissingRetriverIdsParam
+    # def __getattribute__(self, __name: str) -> Any: TODO: (Hristo) raise on uninit repo
 
-        print(ids_param_name)
+    # TODO: (Hristo) add, get, update/save methods, delete ?
+    # TODO: (Hristo) Bulkk_update/save, filter on other cols ?
+    # TODO: (Hristo) How do we handle caching/ returning same Ent. obj across session, is current too heavy handed
+    def get(self, ids: Sequence[GenericEntityId],
+            filters: Sequence[NEEDSTYPEHINT]) -> Mapping[GenericEntityId, GenericEntity]:
+        entities = {}
+        entities_to_retrive = []
 
-        def wrapped(*args, **kwargs):
-            # TODO: (Hristo) Related to updating/saving mutated Ents. and caching
-            # TODO: (Hristo) Do we use add, get, update/save methods instead ? 
-            # TODO: (Hristo) Bulkk_update/save ?
-            return f # Return f for now so current version keeps working
-            
-        return wrapped
+        for id in ids:
+            if id in self._tracked_entities:
+                entities[id] = self._tracked_entities[id]
+            else:
+                entities_to_retrive.append(id)
+
+        if entities_to_retrive:
+            retrieved_entites = self._by_ids(entities_to_retrive, filters)
+
+            for entity in retrieved_entites:
+                self._tracked_entities[entity.id] = entity
+                entities[entity.id] = entity
+
+        return entities
 
 
 class EntityRepoManager:
     repo_types = _entity_repo_classes
     session_getters_by_data_source_type = _data_store_session_getters
-    # TODO: (Hristo) How do we handle caching/ returning same Ent. obj across session
     # TODO: (Hristo) How do we handle optimistic concurrency
     def __init__(self):
         self.repo_instances = {} # TODO: (Hristo) these should go on a repo session object
@@ -114,12 +142,12 @@ class EntityRepoManager:
         repo_type = self.repo_types[entity_name]
         if repo_type in self.repo_instances:
             repo_instance = self.repo_instances[repo_type]
-            print("DB using existing session")
+            logger.debug("DB using existing session")
         else:
             session = self.session_getters_by_data_source_type[repo_type.DATA_STORE_TYPE]()
             session.begin()
             repo_instance = repo_type(session)
-            print("DB Session start", session)
+            logger.debug(f"DB Session start: {session}")
             self.repo_instances[repo_type] = repo_instance
 
         return repo_instance
@@ -132,12 +160,13 @@ class EntityRepoManager:
             yield self
         finally:
             for repo in self.repo_instances.values():
-                repo.db_session.commit()
                 if with_commit:
-                    repo.db_session.close()
-                print("DB Session end", repo.db_session)
+                    repo.db_session.commit()
+                repo.db_session.close()
+                logger.debug(f"DB Session end: {repo.db_session}")
+                repo.shutdown()
 
-            repo_instances = {}
+            self.repo_instances = {}
 
     def update_mutated(self):
         # TODO: (Hristo) How do we handle tracking "dirtied/ mutated" entities, do we want this as part of framework
