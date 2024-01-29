@@ -1,3 +1,4 @@
+# TODO: (Hristo) Break out into its own package ? or handle optional deps. We want all externals as "plugins"
 from functools import partial
 
 from fastapi import Depends
@@ -6,7 +7,7 @@ from ...log import get_logger
 
 logger = get_logger()
 
-def _fastapi_register_route(router_instance, action_type, url_path, handler, get_repo_func, get_ident_func):
+def fastapi_register_route(router_instance, action_type, url_path, handler, get_repo_func, get_ident_func):
     handler = partial(handler, identity=Depends(get_ident_func), repo=Depends(get_repo_func))
     getattr(router_instance, action_type)(url_path)(handler)
 
@@ -16,5 +17,5 @@ def _fastapi_register_route(router_instance, action_type, url_path, handler, get
             f"handler: `{handler}`"
     )
 
-def build_fastapi_register_route(router_instance):
-    return partial(_fastapi_register_route, router_instance)
+# def build_fastapi_register_route(router_instance):
+#     return partial(_fastapi_register_route, router_instance)

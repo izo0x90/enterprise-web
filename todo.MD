@@ -15,4 +15,9 @@ Potential features:
 
 Started:
 - CQRS
+  - versioned commands, queries and their endpoints
+
 - Repo pattern
+  - "Unit of Work" repo sessions
+  - consistent DB session across request bounds
+  - Consistent entity objects across request, bounds (intentional refresh option approach still needed)

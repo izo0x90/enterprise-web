@@ -1,33 +1,40 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 import uvicorn
 
-app = FastAPI()
 
-from . import api
 from enterprise_web.repo import EntityRepoManager
-from enterprise_web.infra import register_routes
-from enterprise_web.integrations.web.fastapi import build_fastapi_register_route
+from enterprise_web.infra import EnterpriseApp
+from enterprise_web.integrations.web.fastapi import fastapi_register_route
 
-from .api.common.data_stores.sqlmodel import create_db_and_tables
-
+from .api import project 
+from .api.common import data_stores
 
 logging.basicConfig(level=logging.DEBUG)
 
+fastapi_app = FastAPI()
+
+data_stores.sqlmodel.init_db()
 repo = EntityRepoManager()
 
-fastapi_register_route = build_fastapi_register_route(app)
+EnterpriseApp(repo=repo,
+              web_route_register_func=fastapi_register_route,
+              web_app=fastapi_app,
+              web_router_csl=APIRouter,
+              features=[
+                  project.feature.project_feature
+              ]
+)
 
-register_routes(api, repo, fastapi_register_route)
-
-@app.get("/")
+@fastapi_app.get("/")
 async def root():
     return {"message": "Hello World"}
 
-@app.get("/init_test_db")
+@fastapi_app.get("/init_test_db")
 async def init_db_data():
     from .api.project.data import models
+    from .api.common.data_stores.sqlmodel import create_db_and_tables
     from sqlmodel import select, Session
     create_db_and_tables()
     project = models.Project(project_name="Test project 0")
@@ -41,7 +48,7 @@ async def init_db_data():
 
 def start():
     uvicorn.run(
-        "sample_project.main:app",
+        "sample_project.main:fastapi_app",
         host="0.0.0.0",
         port=9000,
         reload=True,

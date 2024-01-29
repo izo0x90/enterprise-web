@@ -63,7 +63,7 @@ description = ""
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "enterprise_web-0.0.0.tar.gz", hash = "sha256:8f4b03675dcc7561e15e8619f8a036bb6b5e8fb498110a8d2a47276563fa1e22"},
+    {file = "enterprise_web-0.0.0.tar.gz", hash = "sha256:9787074a85ba26a9a7af30d88b0c64292ce2294171f2a28730f7ada396573214"},
 ]
 
 [package.dependencies]

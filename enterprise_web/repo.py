@@ -51,6 +51,7 @@ DataStoreSessionGetter = Callable[[], DataStoreSession]
 def register_session_getter(session_type: Enum):
     def build_decorator(f: DataStoreSessionGetter):
         _data_store_session_getters[session_type] = f
+        logger.debug(f"Adding session getter: `{f}`, type: `{session_type}`")
         return f
     return build_decorator
 
