@@ -10,6 +10,6 @@ build:
 .PHONY: todo
 todo:
 	@echo "From codebase:\n"
-	@grep -r -I --exclude=Makefile --exclude-dir=.ruff_cache 'TODO:' .
+	@grep -r -I --exclude=Makefile --exclude-dir=.ruff_cache --exclude=todo.MD 'TODO:' .
 	@echo "\n\nFrom todo tracker:\n"
 	@cat todo.MD

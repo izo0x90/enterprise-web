@@ -1,17 +1,16 @@
-from enterprise_web.repo import (
-    EntityRepo
-)
+from enterprise_web.repo import EntityRepo
 from sqlmodel import select, col
 
 from sample_project.api.common.data_stores.types import DataStoreTypes
 from .models import Project
-from ..domain.project_entity import ProjectEntity 
+from ..domain.project_entity import ProjectEntity
+
 
 class ProjectEntityRepo(EntityRepo):
     ENTITY_CLS = ProjectEntity
     DATA_STORE_TYPE = DataStoreTypes.MYSQL
 
-    def _by_ids(self,  ids: list[int], filters: list) -> list[ProjectEntity]: 
+    def _by_ids(self, ids: list[int], filters: list) -> list[ProjectEntity]:
         entities = []
         print(f"Current DB session is {self.db_session}")
         statement = select(Project).where(col(Project.id).in_(ids))
@@ -24,4 +23,3 @@ class ProjectEntityRepo(EntityRepo):
             entities.append(entity)
 
         return entities
-

@@ -3,16 +3,21 @@ from typing import Callable, Self, TypeVar
 
 from enterprise_web.dev import NEEDSTYPEHINT
 
+
 class FeatureTypes(Enum):
-    API = 'api' 
+    API = "api"
+
 
 class FeatureGroupNameAlreadyRegistered(Exception):
     pass
 
+
 class CommandNameAndVersionAlreadyRegistered(Exception):
     pass
 
+
 FeatureGroupOrSubclass = TypeVar("FeatureGroupOrSubclass", bound="FeatureGroup")
+
 
 class FeatureGroup:
     def __repr__(self) -> str:
@@ -34,12 +39,14 @@ class FeatureGroup:
         raise FeatureGroupNameAlreadyRegistered
 
     def add_query_group(self, query_group: Self):
-        raise NotImplemented
+        raise NotImplementedError
 
-    
     def register_command(self, command_name: str, version: int) -> Callable:
         def do_registration(cls: NEEDSTYPEHINT) -> NEEDSTYPEHINT:
-            if command_name not in self.commands or version not in self.commands[command_name]:
+            if (
+                command_name not in self.commands
+                or version not in self.commands[command_name]
+            ):
                 self.commands.setdefault(command_name, {})[version] = cls
 
                 print(self.commands)
@@ -47,6 +54,7 @@ class FeatureGroup:
                 return cls
 
             raise CommandNameAndVersionAlreadyRegistered
+
         return do_registration
 
 
