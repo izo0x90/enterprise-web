@@ -18,7 +18,6 @@ Feature = ApiFeature | NEEDSTYPEHINT
 
 
 async def get_repo(repo):
-
     logger.debug("Repo session start")
     with repo.init_session():
         yield repo
@@ -90,7 +89,6 @@ class EnterpriseApp:
 
         for idx, feature in enumerate(features):
             if feature.feature_type == FeatureTypes.API:
-
                 command_groups_stack = [
                     (feature, list(feature.command_groups.values()))
                 ]

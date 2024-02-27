@@ -149,9 +149,7 @@ class EntityRepoManager:
 
     # TODO: (Hristo) How do we handle optimistic concurrency
     def __init__(self):
-        self.repo_instances = (
-            {}
-        )  # TODO: (Hristo) these should go on a repo session object
+        self.repo_instances = {}  # TODO: (Hristo) these should go on a repo session object
 
     def __getitem__(self, entity_name):
         # TODO:(Hristo) Add exception for missing/ unregistered repo

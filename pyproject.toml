@@ -23,7 +23,6 @@ textual = "^0.48.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.2.0"
-black = "^24.1.1"
 
 [build-system]
 requires = ["poetry-core"]
