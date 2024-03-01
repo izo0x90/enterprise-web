@@ -80,6 +80,8 @@ class EnterpriseApp:
         # TODO: (Hristo) api/V{?} structured portion of URL configurable ?
 
         self.repo = repo
+        self.features = features
+
         for method, path, handler in self._endpoints:
             web_route_register_func(
                 web_app, method, path, handler, partial(get_repo, repo), get_ident

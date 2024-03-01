@@ -1,0 +1,27 @@
+from dataclasses import dataclass
+
+from enterprise_web.repo import Entity
+
+@dataclass
+class {{ entity_name_prefix }}DataModel:
+    """ TODO: (Enterprise web CLI) Customize entity data model """
+    name: str
+    id: int
+
+
+class {{ entity_name }}(Entity):
+    data: {{ entity_name_prefix }}DataModel
+
+    def __init__(self):
+        """ TODO: (Enterprise web CLI) Insert relevant data init. code here """
+        self.data = {{ entity_name_prefix }}DataModel(name="", id=0)
+
+    @property
+    def name(self):
+        """ TODO: (Enterprise web CLI) Example entity prop. """
+        return self.data.name
+
+    @property
+    def id(self):
+        """ TODO: (Enterprise web CLI) Example entity prop. """
+        return self.data.id
