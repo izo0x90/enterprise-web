@@ -1,12 +1,14 @@
 # TODO: (Hristo) Break cli into modules
 
+from collections.abc import Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 import pathlib
 import importlib
 import inspect
+from typing import Optional
 
-# from rich import print  # TODO: (Hristo) Remove as "real" UI/CLI develops ?
+import pydantic
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.table import Table
@@ -33,13 +35,69 @@ app.add_typer(info_app, name="info")
 app.add_typer(add_app, name="add")
 
 
+class CLIConfig(pydantic.BaseModel):
+    restrict_formatting: bool = False
+    horizontal_delimiter: str = " | "
+
+
+class DisplayConfig(pydantic.BaseModel):
+    cli: CLIConfig = CLIConfig()
+
+
+class AppState(pydantic.BaseModel):
+    display_config: DisplayConfig = DisplayConfig()
+
+
+APP_STATE = AppState()
+
+
 # Utils
 def print_err(msg):
     error_console.print(msg, style="error")
 
 
-def print(msg):
-    console.print(msg)
+def print(msg, overflow=None):
+    kwargs = {}
+    if overflow:
+        kwargs["overflow"] = overflow
+
+    if APP_STATE.display_config.cli.restrict_formatting:
+        kwargs["style"] = None
+        kwargs["highlight"] = False
+        console.out(msg, **kwargs)
+        return
+
+    console.print(msg, **kwargs)
+
+
+def print_table(
+    table_data: list[list], title: Optional[str] = None, headers: Sequence[str] = ()
+):
+    col_kwargs = {}
+    if APP_STATE.display_config.cli.restrict_formatting:
+        for cols in table_data:
+            print(APP_STATE.display_config.cli.horizontal_delimiter.join(cols))
+    else:
+        table = Table(title=title)
+
+        for header in headers:
+            table.add_column(header, **col_kwargs)
+
+        for cols in table_data:
+            table.add_row(*cols)
+
+        print(table, overflow="fold")
+
+
+@contextmanager
+def output_within_section(section_name: str):
+    out_func = console.rule
+    if APP_STATE.display_config.cli.restrict_formatting:
+        out_func = print
+
+    out_func(section_name)
+    yield
+    out_func(f"{section_name} END")
 
 
 class ProjectAlreadyInit(Exception):
@@ -150,6 +208,7 @@ class EntityAlreadyExists(Exception):
 
 @dataclass
 class NewEntityData:
+    class_type: str
     entity_name: str
     entity_file_path: str
     entity_file_content: str
@@ -187,6 +246,7 @@ def create_entity_command(feature_name: str, entity_name_prefix: str):
     )
 
     return NewEntityData(
+        class_type="Entity",
         entity_name=entity_name,
         entity_file_path=entity_file_path,
         entity_file_content=entity_code,
@@ -205,9 +265,10 @@ def create_entity_command(feature_name: str, entity_name_prefix: str):
 # Command line interface
 @info_app.command()
 def overview():
-    print("Loading project ...")
-    config = read_project_config()
-    m = import_project(config)
+    with output_within_section("Loading project ..."):
+        config = read_project_config()
+        m = import_project(config)
+
     print("Project overview: ")
     print(m.app)
     print(m.repo.repo_types)
@@ -215,47 +276,54 @@ def overview():
 
 @info_app.command()
 def entities():
-    print("Loading project ...")
-    config = read_project_config()
-    project_obj = import_project(config)
-    exitsting_entities = extract_entities_info(project_obj)
-    console.rule()
+    with output_within_section("Loading project ..."):
+        config = read_project_config()
+        project_obj = import_project(config)
+        exitsting_entities = extract_entities_info(project_obj)
+
     for entity_name, entity_meta in exitsting_entities.items():
         print(f"Entity name: {entity_name}, class: {entity_meta.get('class')}")
 
 
 @info_app.command()
 def features():
-    console.rule("Loading project ...")
-    config = read_project_config()
-    project_obj = import_project(config)
-    project_info = extract_project_info(config)
-    features = extract_features_info(project_obj)
-    console.rule()
+    with output_within_section("Loading project ..."):
+        config = read_project_config()
+        project_obj = import_project(config)
+        project_info = extract_project_info(config)
+        features = extract_features_info(project_obj)
 
-    table = Table(title=f"Project `{project_info['project_name']}` features")
-    table.add_column("Feature name")
-    table.add_column("Path")
-    table.add_column("Class")
+    title = f"Project `{project_info['project_name']}` features"
+    headers = ("Feature name", "Path", "Class")
+    table_data = []
     for name, meta in features.items():
-        table.add_row(name, meta["path"], str(meta["class"]))
+        table_data.append((name, meta["path"], str(meta["class"])))
 
-    print(table)
+    print_table(table_data, title, headers)
 
 
 @add_app.command()
 def entity(feature_name: str, entity_name_prefix: str, yes: bool = False):
-    console.rule("Loading project ...")
-    new_entity_data = create_entity_command(feature_name, entity_name_prefix)
-    # TODO: (hristo) Generate datamodel data, lol
-    # TODO: (hristo) Generate repo data
-    console.rule("New entity name:")
-    print(new_entity_data.entity_name)
-    console.rule("Path to entity file: ")
-    print(new_entity_data.entity_file_path)
-    console.rule("Generated entity code:")
-    print(new_entity_data.entity_file_content)
-    console.rule()
+    with output_within_section("Loading project ..."):
+        new_entity_data = create_entity_command(feature_name, entity_name_prefix)
+        # TODO: (hristo) Generate datamodel data, lol
+        # TODO: (hristo) Generate repo data
+
+    class_table = []
+    class_table_title = "New classes"
+    class_table_headers = ("Type", "Class name")
+    class_table.append((new_entity_data.class_type, new_entity_data.entity_name))
+    print_table(class_table, class_table_title, class_table_headers)
+
+    file_table = []
+    file_table_title = "New files"
+    file_table_headers = ["File path"]
+    file_table.append([str(new_entity_data.entity_file_path)])
+    print_table(file_table, file_table_title, file_table_headers)
+
+    with output_within_section("Generated entity code:"):
+        print(new_entity_data.entity_file_content)
+
     if not yes:
         yes = Confirm.ask("Create entity ?", console=console)
 
@@ -266,6 +334,16 @@ def entity(feature_name: str, entity_name_prefix: str, yes: bool = False):
         )
     else:
         print("Entity create operation aborted :cross_mark:")
+
+
+@app.callback()
+def process_app_args(plain_output: bool = False, h_delimiter: Optional[str] = None):
+    """TODO: Add general usage text"""
+    # TODO: (Hristo) Add general usage text
+    APP_STATE.display_config.cli.restrict_formatting = plain_output
+
+    if h_delimiter:
+        APP_STATE.display_config.cli.horizontal_delimiter = h_delimiter
 
 
 @app.command()

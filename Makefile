@@ -2,7 +2,7 @@ lint:
 	poetry run ruff check .
 
 format:
-	poetry run black .
+	poetry run ruff format .
 
 build:
 	poetry build
